@@ -253,11 +253,11 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/2.1.1/tesseract.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.17.4/dist/xlsx.full.min.js"></script>
     <script>
-        // Usuarios almacenados (simulación)
-        const users = {
-            "Alfben24": "Alfredo2", // Administrador
-            "Julio": "Julio321" // Usuario común sin privilegios de administrador
-        };
+       // Usuarios almacenados (simulación)
+const users = {
+    "Alfben24": "Alfredo2", // Administrador
+    "Julio": "Julio321" // Usuario sin privilegios de administrador
+};
 
         // Variables DOM
         const screens = document.querySelectorAll('.screen');
@@ -266,47 +266,103 @@
         const welcomeScreen = document.getElementById("welcome-screen");
         const mainScreen = document.getElementById("main-screen");
 
+        const loginBtn = document.getElementById("login-btn");
         const loginUsername = document.getElementById("login-username");
         const loginPassword = document.getElementById("login-password");
-        const loginBtn = document.getElementById("login-btn");
         const loginError = document.getElementById("login-error");
 
+        const addUserBtn = document.getElementById("add-user-btn");
         const newUsername = document.getElementById("new-username");
         const newPassword = document.getElementById("new-password");
-        const addUserBtn = document.getElementById("add-user-btn");
         const userTable = document.getElementById("user-table");
+
         const logoutAdminBtn = document.getElementById("logout-admin-btn");
+        const logoutWelcomeBtn = document.getElementById("logout-welcome-btn");
+        const logoutMainBtn = document.getElementById("logout-main-btn");
 
         const startBtn = document.getElementById("start-btn");
-        const logoutWelcomeBtn = document.getElementById("logout-welcome-btn");
 
-        const logoutMainBtn = document.getElementById("logout-main-btn");
-        const pdfFile = document.getElementById("pdf-file");
         const processBtn = document.getElementById("process-btn");
-        const progress = document.getElementById("progress");
+        const pdfFileInput = document.getElementById("pdf-file");
+        const progressContainer = document.getElementById("progress");
         const progressBar = document.getElementById("progress-bar");
         const statusMessage = document.getElementById("status-message");
         const downloadLink = document.getElementById("download-link");
 
-        let currentUser = null;
-
-        // Función para cambiar de pantalla
+        // Mostrar una pantalla y ocultar las demás
         function showScreen(screenId) {
             screens.forEach(screen => screen.classList.remove('active'));
             document.getElementById(screenId).classList.add('active');
         }
 
-        // Función para iniciar sesión
+        // Cargar la tabla de usuarios
+        function loadUserTable() {
+            userTable.innerHTML = "";
+            for (const user in users) {
+                if (user !== "Alfben24") { // No mostrar al administrador para edición/eliminación
+                    const row = document.createElement("tr");
+
+                    const userCell = document.createElement("td");
+                    userCell.textContent = user;
+
+                    const actionsCell = document.createElement("td");
+                    actionsCell.classList.add("actions");
+
+                    const editBtn = document.createElement("button");
+                    editBtn.textContent = "Editar";
+                    editBtn.style.background = "#2ecc71";
+                    editBtn.style.color = "#fff";
+                    editBtn.addEventListener("click", () => editUser(user));
+
+                    const deleteBtn = document.createElement("button");
+                    deleteBtn.textContent = "Eliminar";
+                    deleteBtn.style.background = "#e74c3c";
+                    deleteBtn.style.color = "#fff";
+                    deleteBtn.addEventListener("click", () => deleteUser(user));
+
+                    actionsCell.appendChild(editBtn);
+                    actionsCell.appendChild(deleteBtn);
+
+                    row.appendChild(userCell);
+                    row.appendChild(actionsCell);
+
+                    userTable.appendChild(row);
+                }
+            }
+        }
+
+        // Editar usuario
+        function editUser(username) {
+            const newPass = prompt(`Ingrese la nueva contraseña para ${username}:`);
+            if (newPass) {
+                users[username] = newPass;
+                alert("Contraseña actualizada correctamente.");
+                loadUserTable();
+            }
+        }
+
+        // Eliminar usuario
+        function deleteUser(username) {
+            if (confirm(`¿Está seguro de eliminar al usuario "${username}"?`)) {
+                delete users[username];
+                alert("Usuario eliminado correctamente.");
+                loadUserTable();
+            }
+        }
+
+        // Inicio de sesión
         loginBtn.addEventListener("click", () => {
-            const username = loginUsername.value;
-            const password = loginPassword.value;
+            const username = loginUsername.value.trim();
+            const password = loginPassword.value.trim();
 
             if (users[username] === password) {
-                currentUser = username;
+                loginError.style.display = "none";
+                loginUsername.value = "";
+                loginPassword.value = "";
 
                 if (username === "Alfben24") {
+                    loadUserTable();
                     showScreen("admin-screen");
-                    loadUsers();
                 } else {
                     showScreen("welcome-screen");
                 }
@@ -315,120 +371,123 @@
             }
         });
 
-        // Función para cargar usuarios en la tabla
-        function loadUsers() {
-            userTable.innerHTML = "";
-            for (const [user, pass] of Object.entries(users)) {
-                const row = document.createElement("tr");
-                const usernameCell = document.createElement("td");
-                usernameCell.textContent = user;
-                const actionsCell = document.createElement("td");
-                const deleteBtn = document.createElement("button");
-                deleteBtn.textContent = "Eliminar";
-                actionsCell.appendChild(deleteBtn);
-                row.appendChild(usernameCell);
-                row.appendChild(actionsCell);
-                userTable.appendChild(row);
-
-                deleteBtn.addEventListener("click", () => {
-                    deleteUser(user);
-                });
-            }
-        }
-
-        // Función para agregar usuario
+        // Agregar nuevo usuario
         addUserBtn.addEventListener("click", () => {
-            const username = newUsername.value;
-            const password = newPassword.value;
+            const newUser = newUsername.value.trim();
+            const newPass = newPassword.value.trim();
 
-            if (username && password) {
-                users[username] = password;
-                loadUsers();
-                newUsername.value = "";
-                newPassword.value = "";
+            if (newUser === "" || newPass === "") {
+                alert("Por favor, complete todos los campos.");
+                return;
             }
+
+            if (users[newUser]) {
+                alert("El usuario ya existe.");
+                return;
+            }
+
+            users[newUser] = newPass;
+            alert("Usuario agregado correctamente.");
+            newUsername.value = "";
+            newPassword.value = "";
+            loadUserTable();
         });
 
-        // Función para eliminar usuario
-        function deleteUser(username) {
-            if (username !== "Alfben24") {
-                delete users[username];
-                loadUsers();
-            } else {
-                alert("No se puede eliminar el administrador.");
-            }
-        }
-
-        // Función para cerrar sesión como admin
+        // Cerrar sesión
         logoutAdminBtn.addEventListener("click", () => {
-            currentUser = null;
             showScreen("login-screen");
         });
 
-        // Función para comenzar como usuario común
+        logoutWelcomeBtn.addEventListener("click", () => {
+            showScreen("login-screen");
+        });
+
+        logoutMainBtn.addEventListener("click", () => {
+            showScreen("login-screen");
+        });
+
+        // Comenzar (navegar a la pantalla principal)
         startBtn.addEventListener("click", () => {
             showScreen("main-screen");
         });
 
-        // Función para cerrar sesión en la pantalla principal
-        logoutWelcomeBtn.addEventListener("click", () => {
-            currentUser = null;
-            showScreen("login-screen");
-        });
+        // Procesar PDF
+        processBtn.addEventListener("click", async () => {
+            const file = pdfFileInput.files[0];
+            if (!file) {
+                alert("Por favor, selecciona un archivo PDF.");
+                return;
+            }
 
-        // Función para procesar el archivo PDF
-        processBtn.addEventListener("click", () => {
-            const file = pdfFile.files[0];
-            if (file) {
-                processPdf(file);
+            statusMessage.style.display = "block";
+            statusMessage.textContent = "Procesando archivo PDF...";
+            progressContainer.style.display = "block";
+            progressBar.style.width = "0%";
+            downloadLink.style.display = "none";
+
+            try {
+                const textContent = await extractTextFromPDF(file);
+                const workbook = textToExcel(textContent);
+
+                const excelBlob = new Blob([workbook], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+                const excelURL = URL.createObjectURL(excelBlob);
+                downloadLink.href = excelURL;
+                downloadLink.download = "resultado.xlsx";
+                downloadLink.style.display = "block";
+
+                statusMessage.style.display = "none";
+                progressContainer.style.display = "none";
+            } catch (error) {
+                console.error("Error durante el procesamiento:", error);
+                statusMessage.textContent = "Error durante el procesamiento. Revisa el archivo y vuelve a intentarlo.";
             }
         });
 
-        // Función para procesar el PDF y convertirlo a Excel
-        function processPdf(file) {
-            progress.style.display = "block";
-            statusMessage.style.display = "block";
-            const reader = new FileReader();
-            reader.onload = function (e) {
-                const pdfData = new Uint8Array(e.target.result);
-                pdfjsLib.getDocument(pdfData).promise.then(function (pdf) {
-                    let textContent = "";
-                    let totalPages = pdf.numPages;
+        // Extraer texto del PDF usando PDF.js y Tesseract.js
+        async function extractTextFromPDF(file) {
+            const arrayBuffer = await file.arrayBuffer();
+            const pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+            let fullText = "";
+            const totalPages = pdfDoc.numPages;
 
-                    for (let pageNumber = 1; pageNumber <= totalPages; pageNumber++) {
-                        pdf.getPage(pageNumber).then(function (page) {
-                            page.getTextContent().then(function (text) {
-                                textContent += text.items.map(item => item.str).join(" ") + "\n";
-                                progressBar.style.width = (pageNumber / totalPages) * 100 + "%";
-                                if (pageNumber === totalPages) {
-                                    convertToExcel(textContent);
-                                }
-                            });
-                        });
+            for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
+                const page = await pdfDoc.getPage(pageNum);
+                const viewport = page.getViewport({ scale: 2 });
+                const canvas = document.createElement("canvas");
+                const context = canvas.getContext("2d");
+                canvas.width = viewport.width;
+                canvas.height = viewport.height;
+
+                await page.render({ canvasContext: context, viewport: viewport }).promise;
+
+                const { data: { text } } = await Tesseract.recognize(canvas, "spa", {
+                    logger: m => {
+                        if (m.status === 'recognizing text') {
+                            const progress = Math.round(m.progress * 100);
+                            progressBar.style.width = `${progress}%`;
+                        }
                     }
                 });
-            };
-            reader.readAsArrayBuffer(file);
+
+                fullText += text + "\n";
+            }
+
+            return fullText;
         }
 
-        // Función para convertir el texto a Excel
-        function convertToExcel(text) {
-            const wb = XLSX.utils.book_new();
-            const ws = XLSX.utils.aoa_to_sheet([text.split("\n")]);
-            XLSX.utils.book_append_sheet(wb, ws, "Datos");
-            const excelFile = XLSX.write(wb, { bookType: 'xlsx', type: 'binary' });
-            const buffer = new ArrayBuffer(excelFile.length);
-            const view = new Uint8Array(buffer);
-            for (let i = 0; i < excelFile.length; i++) {
-                view[i] = excelFile.charCodeAt(i) & 0xFF;
-            }
-            const blob = new Blob([buffer], { type: "application/octet-stream" });
-            const url = URL.createObjectURL(blob);
-            downloadLink.href = url;
-            downloadLink.style.display = "inline-block";
-            downloadLink.textContent = "Descargar Excel";
-            statusMessage.style.display = "none";
+        // Convertir texto a Excel
+        function textToExcel(text) {
+            const rows = text.split("\n").map(row => row.split(/\s+/));
+            const worksheet = XLSX.utils.aoa_to_sheet(rows);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Hoja1");
+            return XLSX.write(workbook, { bookType: "xlsx", type: "array" });
         }
+
+        // Asegurar compatibilidad móvil/tablet
+        window.addEventListener('resize', () => {
+            // Aquí puedes agregar lógica adicional si es necesario
+        });
     </script>
 </body>
 </html>
