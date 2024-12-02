@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF a Excel con OCR y Administración</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        /* Estilos generales */
+        body {
+            font-family: 'Roboto', sans-serif;
+            background: #000000;
+            color: #f1c40f;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .screen {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            width: 100%;
+            max-width: 500px;
+            background: #1c1c1c;
+            border-radius: 15px;
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.5);
+            padding: 30px;
+            position: relative;
+        }
+
+        .screen.active {
+            display: flex;
+        }
+
+        h1 {
+            font-size: 1.8em;
+            color: #f1c40f;
+            margin-bottom: 15px;
+        }
+
+        p {
+            color: #f1c40f;
+            margin-bottom: 15px;
+            font-size: 1em;
+        }
+
+        button {
+            background: #f1c40f;
+            color: #000000;
+            border: none;
+            padding: 15px;
+            font-size: 1.2em;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+            max-width: 300px;
+            box-shadow: 0 5px 10px rgba(0, 0, 0, 0.3);
+            box-sizing: border-box;
+        }
+
+        button:hover {
+            background: #ffdf59;
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.4);
+            transform: translateY(-2px);
+        }
+
+        input[type="text"],
+        input[type="password"],
+        input[type="file"] {
+            display: block;
+            margin: 0 auto 20px;
+            padding: 12px;
+            font-size: 1em;
+            border: 1px solid #f1c40f;
+            border-radius: 15px;
+            background: #1c1c1c;
+            color: #f1c40f;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        input[type="file"]::file-selector-button {
+            background: #f1c40f;
+            color: #000000;
+            border: none;
+            border-radius: 15px;
+            padding: 8px 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        input[type="file"]::file-selector-button:hover {
+            background: #ffdf59;
+        }
+
+        .footer {
+            position: absolute;
+            bottom: 15px;
+            width: 100%;
+            font-size: 0.85em;
+            color: #f1c40f;
+            text-align: center;
+        }
+
+        #progress {
+            width: 100%;
+            background: #333;
+            border-radius: 15px;
+            overflow: hidden;
+            margin: 15px 0;
+            display: none;
+        }
+
+        #progress-bar {
+            height: 10px;
+            width: 0;
+            background: #f1c40f;
+            transition: width 0.3s;
+        }
+
+        #status-message {
+            color: #f1c40f;
+            margin-top: 10px;
+            font-size: 0.9em;
+            display: none;
+        }
+
+        #download-link {
+            display: none;
+            margin-top: 20px;
+            color: #f1c40f;
+            text-decoration: none;
+            font-size: 1em;
+            font-weight: bold;
+        }
+
+        #download-link:hover {
+            text-decoration: underline;
+            color: #ffdf59;
+        }
+
+        table {
+            width: 100%;
+            max-width: 450px;
+            border-collapse: collapse;
+            margin-top: 20px;
+            color: #f1c40f;
+        }
+
+        table th, table td {
+            padding: 10px;
+            border: 1px solid #f1c40f;
+            text-align: center;
+        }
+
+        .actions button {
+            width: auto;
+            padding: 5px 10px;
+            margin: 0 2px;
+            border-radius: 10px;
+            font-size: 0.9em;
+        }
+
+        .error-message {
+            color: red;
+            font-size: 0.9em;
+            display: none;
+            margin-top: 10px;
+        }
+
+        @media (max-width: 600px) {
+            h1 {
+                font-size: 1.5em;
+            }
+
+            p {
+                font-size: 0.9em;
+            }
+
+            button {
+                font-size: 1em;
+                padding: 10px;
+            }
+
+            table th, table td {
+                padding: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Pantalla de Inicio de Sesión -->
+    <div class="screen active" id="login-screen">
+        <h1>Inicio de Sesión</h1>
+        <input type="text" id="login-username" placeholder="Usuario">
+        <input type="password" id="login-password" placeholder="Contraseña">
+        <button id="login-btn">Iniciar Sesión</button>
+        <p id="login-error" class="error-message">Usuario o contraseña incorrectos.</p>
+    </div>
+
+    <!-- Pantalla de Administración de Usuarios -->
+    <div class="screen" id="admin-screen">
+        <h1>Administrar Usuarios</h1>
+        <input type="text" id="new-username" placeholder="Nuevo Usuario">
+        <input type="password" id="new-password" placeholder="Nueva Contraseña">
+        <button id="add-user-btn">Agregar Usuario</button>
+        <table>
+            <thead>
+                <tr>
+                    <th>Usuario</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody id="user-table">
+                <!-- Se llenará dinámicamente -->
+            </tbody>
+        </table>
+        <button id="logout-admin-btn">Cerrar Sesión</button>
+    </div>
+
+    <!-- Pantalla de Bienvenida -->
+    <div class="screen" id="welcome-screen">
+        <h1>Bienvenido a PDF a Excel</h1>
+        <p>Convierte tus archivos PDF a hojas de cálculo Excel de manera rápida y sencilla.</p>
+        <button id="start-btn">Comenzar</button>
+        <div class="footer">Creado por J. A. B. B. para todos los Q:. H:.</div>
+        <button id="logout-welcome-btn" style="margin-top: 15px;">Cerrar Sesión</button>
+    </div>
+
+    <!-- Pantalla principal -->
+    <div class="screen" id="main-screen">
+        <h1>Sube tu archivo PDF</h1>
+        <p>Convierte tus archivos PDF en hojas de cálculo Excel utilizando reconocimiento óptico de caracteres (OCR).</p>
+        <input type="file" id="pdf-file" accept=".pdf" />
+        <button id="process-btn">Procesar PDF</button>
+        <div id="progress">
+            <div id="progress-bar"></div>
+        </div>
+        <p id="status-message">Procesando...</p>
+        <a id="download-link" href="#">Descargar Excel</a>
+        <button id="logout-main-btn" style="margin-top: 15px;">Cerrar Sesión</button>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/2.1.1/tesseract.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.17.4/dist/xlsx.full.min.js"></script>
+    <script>
+        // Usuarios almacenados (simulación)
+        const users = {
+            "Alfben24": "Alfredo2", // Administrador
+            "Julio": "Julio321" // Usuario común sin privilegios de administrador
+        };
+
+        // Variables DOM
+        const screens = document.querySelectorAll('.screen');
+        const loginScreen = document.getElementById("login-screen");
+        const adminScreen = document.getElementById("admin-screen");
+        const welcomeScreen = document.getElementById("welcome-screen");
+        const mainScreen = document.getElementById("main-screen");
+
+        const loginUsername = document.getElementById("login-username");
+        const loginPassword = document.getElementById("login-password");
+        const loginBtn = document.getElementById("login-btn");
+        const loginError = document.getElementById("login-error");
+
+        const newUsername = document.getElementById("new-username");
+        const newPassword = document.getElementById("new-password");
+        const addUserBtn = document.getElementById("add-user-btn");
+        const userTable = document.getElementById("user-table");
+        const logoutAdminBtn = document.getElementById("logout-admin-btn");
+
+        const startBtn = document.getElementById("start-btn");
+        const logoutWelcomeBtn = document.getElementById("logout-welcome-btn");
+
+        const logoutMainBtn = document.getElementById("logout-main-btn");
+        const pdfFile = document.getElementById("pdf-file");
+        const processBtn = document.getElementById("process-btn");
+        const progress = document.getElementById("progress");
+        const progressBar = document.getElementById("progress-bar");
+        const statusMessage = document.getElementById("status-message");
+        const downloadLink = document.getElementById("download-link");
+
+        let currentUser = null;
+
+        // Función para cambiar de pantalla
+        function showScreen(screenId) {
+            screens.forEach(screen => screen.classList.remove('active'));
+            document.getElementById(screenId).classList.add('active');
+        }
+
+        // Función para iniciar sesión
+        loginBtn.addEventListener("click", () => {
+            const username = loginUsername.value;
+            const password = loginPassword.value;
+
+            if (users[username] === password) {
+                currentUser = username;
+
+                if (username === "Alfben24") {
+                    showScreen("admin-screen");
+                    loadUsers();
+                } else {
+                    showScreen("welcome-screen");
+                }
+            } else {
+                loginError.style.display = "block";
+            }
+        });
+
+        // Función para cargar usuarios en la tabla
+        function loadUsers() {
+            userTable.innerHTML = "";
+            for (const [user, pass] of Object.entries(users)) {
+                const row = document.createElement("tr");
+                const usernameCell = document.createElement("td");
+                usernameCell.textContent = user;
+                const actionsCell = document.createElement("td");
+                const deleteBtn = document.createElement("button");
+                deleteBtn.textContent = "Eliminar";
+                actionsCell.appendChild(deleteBtn);
+                row.appendChild(usernameCell);
+                row.appendChild(actionsCell);
+                userTable.appendChild(row);
+
+                deleteBtn.addEventListener("click", () => {
+                    deleteUser(user);
+                });
+            }
+        }
+
+        // Función para agregar usuario
+        addUserBtn.addEventListener("click", () => {
+            const username = newUsername.value;
+            const password = newPassword.value;
+
+            if (username && password) {
+                users[username] = password;
+                loadUsers();
+                newUsername.value = "";
+                newPassword.value = "";
+            }
+        });
+
+        // Función para eliminar usuario
+        function deleteUser(username) {
+            if (username !== "Alfben24") {
+                delete users[username];
+                loadUsers();
+            } else {
+                alert("No se puede eliminar el administrador.");
+            }
+        }
+
+        // Función para cerrar sesión como admin
+        logoutAdminBtn.addEventListener("click", () => {
+            currentUser = null;
+            showScreen("login-screen");
+        });
+
+        // Función para comenzar como usuario común
+        startBtn.addEventListener("click", () => {
+            showScreen("main-screen");
+        });
+
+        // Función para cerrar sesión en la pantalla principal
+        logoutWelcomeBtn.addEventListener("click", () => {
+            currentUser = null;
+            showScreen("login-screen");
+        });
+
+        // Función para procesar el archivo PDF
+        processBtn.addEventListener("click", () => {
+            const file = pdfFile.files[0];
+            if (file) {
+                processPdf(file);
+            }
+        });
+
+        // Función para procesar el PDF y convertirlo a Excel
+        function processPdf(file) {
+            progress.style.display = "block";
+            statusMessage.style.display = "block";
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const pdfData = new Uint8Array(e.target.result);
+                pdfjsLib.getDocument(pdfData).promise.then(function (pdf) {
+                    let textContent = "";
+                    let totalPages = pdf.numPages;
+
+                    for (let pageNumber = 1; pageNumber <= totalPages; pageNumber++) {
+                        pdf.getPage(pageNumber).then(function (page) {
+                            page.getTextContent().then(function (text) {
+                                textContent += text.items.map(item => item.str).join(" ") + "\n";
+                                progressBar.style.width = (pageNumber / totalPages) * 100 + "%";
+                                if (pageNumber === totalPages) {
+                                    convertToExcel(textContent);
+                                }
+                            });
+                        });
+                    }
+                });
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        // Función para convertir el texto a Excel
+        function convertToExcel(text) {
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.aoa_to_sheet([text.split("\n")]);
+            XLSX.utils.book_append_sheet(wb, ws, "Datos");
+            const excelFile = XLSX.write(wb, { bookType: 'xlsx', type: 'binary' });
+            const buffer = new ArrayBuffer(excelFile.length);
+            const view = new Uint8Array(buffer);
+            for (let i = 0; i < excelFile.length; i++) {
+                view[i] = excelFile.charCodeAt(i) & 0xFF;
+            }
+            const blob = new Blob([buffer], { type: "application/octet-stream" });
+            const url = URL.createObjectURL(blob);
+            downloadLink.href = url;
+            downloadLink.style.display = "inline-block";
+            downloadLink.textContent = "Descargar Excel";
+            statusMessage.style.display = "none";
+        }
+    </script>
+</body>
+</html>
